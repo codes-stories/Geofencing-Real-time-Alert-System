@@ -1,0 +1,14 @@
+# Binaries and local artifacts
+/server
+/out/
+*.test
+*.out
+
+# Editor / OS noise
+.DS_Store
+.idea/
+.vscode/
+
+# Docker context hygiene (keep the build context small)
+.dockerignore
+Dockerfile

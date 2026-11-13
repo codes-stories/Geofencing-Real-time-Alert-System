@@ -1,0 +1,44 @@
+services:
+  db:
+    image: kartoza/postgis:16-3.4
+    environment:
+      POSTGRES_USER: geofence
+      POSTGRES_PASSWORD: geofence
+      POSTGRES_PASS: geofence
+      POSTGRES_DB: geofence
+      POSTGRES_MULTIPLE_EXTENSIONS: postgis
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U geofence -d geofence"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+
+  backend:
+    build: ./backend
+    environment:
+      PORT: "8080"
+      DATABASE_URL: postgres://geofence:geofence@db:5432/geofence?sslmode=disable
+      RATE_LIMIT_PER_MIN: "300"
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8080/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+    ports:
+      - "${BACKEND_PORT:-8080}:8080"
+
+  frontend:
+    build: ./frontend
+    depends_on:
+      backend:
+        condition: service_healthy
+    ports:
+      - "${FRONTEND_PORT:-3000}:80"
+
+volumes:
+  pgdata:
