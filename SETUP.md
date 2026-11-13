@@ -385,15 +385,80 @@ npm run build        # production build must pass
 
 ---
 
-## 8. Deployment checklist
+## 8. Submission & deployment checklist
 
-- **Backend image**: `docker build -t <user>/geofencing-backend ./backend`
-  then `docker push <user>/geofencing-backend` (set `DATABASE_URL` and
-  `PORT` on the target platform; expose port 8080).
-- **Frontend**: deploy the `frontend/` folder to Vercel / Netlify /
-  Cloudflare Pages with build command `npm run build`, output `dist`, and
-  `VITE_API_BASE=https://<your-backend-host>` so API + WebSocket calls reach
-  the containerized backend. (The provided `frontend/Dockerfile` +
-  `nginx.conf` alternatively run the SPA behind nginx with the same proxy.)
-- **Video walkthrough**: record the 30–45 min demo described in the
-  assessment and link it here: `<VIDEO_LINK>`.
+### 8.1 GitHub repository
+
+- [x] Source pushed to `main` of `https://github.com/codes-stories/Geofencing-Real-time-Alert-System`
+- [ ] Repo must be **private** — GitHub → *Settings* → *Danger Zone* → *Change visibility* (if needed)
+- [ ] Add the assessment collaborators — *Settings* → *Collaborators* → *Add people*:
+
+  ```
+  vedantp@mapup.ai
+  ajayap@mapup.ai
+  jyotis@mapup.ai
+  tanishqs@mapup.ai
+  naveenn@mapup.ai
+  asijitp@mapup.ai
+  dewanshp@mapup.ai
+  karkuvelpandip@mapup.ai
+  parask@mapup.ai
+  ```
+
+### 8.2 Backend image → Docker Hub
+
+```bash
+docker login
+docker build -t <dockerhub-user>/geofencing-backend:latest ./backend
+docker push <dockerhub-user>/geofencing-backend:latest
+```
+
+Run it on any Docker-capable host (Railway, Fly.io, Cloud Run, EC2…):
+
+```bash
+docker run -d --name geofence-backend -p 8080:8080 \
+  -e DATABASE_URL="postgres://user:pass@host:5432/db?sslmode=disable" \
+  -e RATE_LIMIT_PER_MIN=300 \
+  <dockerhub-user>/geofencing-backend:latest
+```
+
+Use a managed PostgreSQL with the **PostGIS extension** enabled (Supabase,
+Neon, RDS…). The schema in `backend/internal/store/schema.sql` is applied
+automatically at startup, so no manual migration step is needed. Without
+`DATABASE_URL` the server runs on its in-memory store (demo only).
+
+Health check: `GET /health` → `{"status":"ok","time_ns":"…"}`.
+
+### 8.3 Frontend → Vercel / Netlify / Cloudflare Pages
+
+| Setting | Value |
+| --- | --- |
+| Framework preset | Vite |
+| Build command | `npm run build` |
+| Output directory | `dist` |
+| Environment variable | `VITE_API_BASE=https://<your-backend-host>` |
+
+`VITE_API_BASE` makes the app call `${VITE_API_BASE}/…` for REST and
+`${VITE_API_BASE with ws://}/ws/alerts` for WebSocket (built into
+`frontend/src/api/client.js`). The backend already sends
+`Access-Control-Allow-Origin: *`.
+
+Alternative: ship the provided `frontend/Dockerfile` (nginx proxies
+`/geofences`, `/vehicles`, `/alerts`, `/violations`, `/health` and `/ws` to
+the `backend` service) via `docker push` and run it on any container host.
+
+### 8.4 Video walkthrough (30–45 min)
+
+1. **App demo (10–12 min)** — draw a geofence on the map, register a
+   vehicle, move it to trigger entry/exit, show the live toast/alert feed,
+   filter violation history, then `docker compose up --build` from scratch.
+2. **Implementation deep dive (12–18 min)** — project structure, Go handler
+   flow, point-in-polygon code, WebSocket hub, PostGIS schema, React
+   structure and real-time integration (show actual code, not slides).
+3. **Gaps & roadmap (10–15 min)** — limitations, refactors, production and
+   scaling notes.
+
+Record with Loom/OBS, upload as **unlisted** YouTube/Vimeo (or share a
+Drive/Loom link with the collaborator emails above), paste the link into
+`README.md` where `<VIDEO_LINK>` is, then submit via the Google form from
+the assessment email.
